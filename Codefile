@@ -1,0 +1,70 @@
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
+
+# Function to load and preprocess the image
+def load_image(image_path, max_dim=512):
+    img = Image.open(image_path)  # Load the image
+    img = img.convert('RGB')  # Convert image to RGB
+    
+    # Resize the image to fit within the max dimension while maintaining aspect ratio
+    long = max(img.size)  # Get the longest dimension (width or height)
+    scale = max_dim / long  # Scale factor to resize image
+    new_size = tuple([int(dim * scale) for dim in img.size])  # Calculate the new size
+    
+    # Ensure img is defined before using it
+    img = img.resize(new_size, Image.Resampling.LANCZOS)  # Resize with LANCZOS filter
+    
+    # Convert to numpy array and preprocess (expand dims)
+    img = np.array(img)  # Convert the image to a numpy array
+    img = np.expand_dims(img, axis=0)  # Add a batch dimension
+    
+    return tf.convert_to_tensor(img, dtype=tf.float32)  # Convert to tensor
+
+# Function to load the pre-trained VGG19 model
+def load_vgg19():
+    return tf.keras.applications.VGG19(include_top=False, weights='imagenet')
+
+# Extract features from a specific layer
+def get_features(model, image, layers):
+    # Preprocess image for VGG19
+    image = tf.keras.applications.vgg19.preprocess_input(image)
+    features = model(image)
+    
+    # Map features to layers
+    layer_outputs = [features[i] for i in layers]
+    
+    return layer_outputs
+
+# Load your images
+content_image_path = r'D:\intern projects\img1.jpg'  # Replace with the path to your content image
+style_image_path = r'D:\intern projects\img2.jpg'  # Replace with the path to your style image
+
+content_image = load_image(content_image_path)  # Load the content image
+style_image = load_image(style_image_path)  # Load the style image
+
+# Load VGG19 model
+vgg = load_vgg19()
+
+# Choose layers for content and style extraction
+content_layers = ['block5_conv2']  # Content layers
+style_layers = ['block1_conv1', 'block2_conv1', 'block3_conv1', 'block4_conv1', 'block5_conv1']  # Style layers
+
+# Extract content and style features from the images
+content_features = get_features(vgg, content_image, [4])  # Index of content layer (block5_conv2)
+style_features = get_features(vgg, style_image, [0, 1, 2, 3, 4])  # Indices for style layers
+
+# Display content and style images
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+plt.imshow(content_image[0].numpy().astype(np.uint8))  # Display content image
+plt.title("Content Image")
+plt.axis('off')
+
+plt.subplot(1, 2, 2)
+plt.imshow(style_image[0].numpy().astype(np.uint8))  # Display style image
+plt.title("Style Image")
+plt.axis('off')
+
+plt.show()
